@@ -6,7 +6,7 @@ This package contains the source code for the code skeleton generator.
 It requires ROSE (http://rosecompiler.org) to compile.
 There is also a shell script to help build rose on Linux/Mac in the contrib directory.
 
-BASIC FUNCTIONS
+BASIC USAGE
 
 The skeletonizer takes C/Fortran source code, and generate skeleton code for them.
 Current supported/unsupported features follows:
@@ -23,5 +23,9 @@ Supported Features
 
 KNOWN ISSUES
 * Pointers and C++ classes are not supported.
+
+ENVIRONMENT VARIABLES
+ROSE, boost, and JVM (if Fortran is enabled) libs are needed to be visible in
+LD_LIBRARY_PATH (linux) or DYLD_LIBRARY_PATH (mac).
 
 EOF
