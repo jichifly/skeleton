@@ -1,6 +1,10 @@
 # Makefile.am
 # 11/13/2014  jichi
 
+AM_LDFLAGS = \
+  -lrose \
+  -lboost_regex -lboost_filesystem -lboost_system
+
 bin_PROGRAMS = skgen
 skgen_SOURCES = \
   skgen.cc \

@@ -1,5 +1,11 @@
+# .gitignore
+# 11/13/2014 jichi
+
 # Thumbnails
 .DS_Store
+
+# Automake
+autom4te.cache
 
 # Compiled Object files
 *.slo
