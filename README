@@ -1,0 +1,27 @@
+README (UTF-8)
+9/11/2012 jichi
+Version 0.1
+
+This package contains the source code for the code skeleton generator.
+It requires ROSE (http://rosecompiler.org) to compile.
+There is also a shell script to help build rose on Linux/Mac in the contrib directory.
+
+BASIC FUNCTIONS
+
+The skeletonizer takes C/Fortran source code, and generate skeleton code for them.
+Current supported/unsupported features follows:
+
+Supported Features
+* Parse C/Fortran code.
+* Generate the <declare> section
+  * Generate scalar variable declarations
+  * Generate array variable declarations
+* Generate the <code> section
+  * Generate comp.
+  * Generate for statement.
+  * Generate ld/st.
+
+KNOWN ISSUES
+* Pointers and C++ classes are not supported.
+
+EOF

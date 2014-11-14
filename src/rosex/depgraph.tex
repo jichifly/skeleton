@@ -1,0 +1,286 @@
+% readme.tex
+% 8/16/2011 jichi
+%
+% README for usage of dependence graph.
+
+%\documentclass[11pt]{article}
+\documentclass[preprint]{llncs}
+%\documentclass[11pt]{llncs}
+%\usepackage[silent]{TODO}
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{makeidx}
+\usepackage{appendix}
+\usepackage{graphicx}   % for importing graph
+%\usepackage{natbib}     % cite in author-year style
+%\usepackage{ifthen}
+
+%\usepackage[dvips,
+%  pdfpagemode=UseOutlines,bookmarks,
+%  pdfstartview=FitH,
+%  pdftitle={Proposal for exploiting OpenMP task-level parallelization},
+%  pdfauthor={Jichi Guo},
+%  colorlinks,linkcolor=blue,citecolor=blue,urlcolor=red
+%  ]{hyperref}
+
+%% Page setup
+%\textwidth 6.5in
+%\textheight 8.8in
+%\oddsidemargin 0in
+%\evensidemargin 0in
+%\topmargin -0.3in
+%\parindent 0.25in
+
+\makeindex
+
+\title{ROSE Dependency Graph}
+\author{Jichi Guo \\ jguo@cs.utsa.edu}
+\institute{University of Texas at San Antonio}
+
+\begin{document}
+\maketitle
+
+%%
+%  Structure 
+%  - Introduction
+%  - Input and output
+%  - Vertices and edges
+%  - Build options
+%
+
+%%
+%  Section  Introduction
+%
+\section{Introduction}
+\label{sec:intro}
+
+This document serves to describe the usage of the \texttt{DepGraph} class in ROSE.
+The following sections will introduce
+  how to build the dependency graph (Section~\ref{sec:build}),
+  how to traverse the graph  (Section~\ref{sec:traverse}),
+  and advanced building options (Section~\ref{sec:option}).
+
+%%
+%  Section  Input and output
+%  - Input
+%  - Output
+%
+\section{Build dependency graph}
+\label{sec:build}
+
+\subsection{Input}
+\label{sec:build:input}
+The dependency graph is represented by \texttt{DepGraph} built from a Sage AST.
+The AST is supposed to be either \texttt{SgFunctionDefinition} or \texttt{SgStatement}.
+Additional, the advanced building options
+  such as side effect interface or alias interface
+  could be specified through the \texttt{option\_type}.
+The advanced options are discussed later in Section~\ref{sec:option}.
+An example to given in List~\ref{list:build}.
+The graph instance is not \emph{valid} unless being built successfully.
+
+\lstset{
+  caption={Build \texttt{DepGraph}},
+  label=list:build,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+  DepGraph g;
+  g.build(ast_root);
+  if (!g.valid())
+    cerr << "Failed to build the dependency graph." << endl;
+\end{lstlisting}
+
+\subsection{Output}
+\label{sec:build:output}
+The dependency graph is represented as a directed graph.
+The vertex represents the corresponding statement in the AST.
+There is a one-to-one relation between the graph vertex and the sage statement.
+The edge represents the dependency between statements.
+The detailed dependency information is stored as \texttt{DepInfo} in the edge.
+
+\subsection{Copy}
+\label{sec:build:copy}
+The internal graph representation is managed using \texttt{boost::shared\_ptr}.
+When copying a graph instance, a vertex, or an edge,
+  the underlying representation will not get duplicated
+  and all instances will share the same implementation.
+So, they can be viewed as the descriptor of the underlying implementation.
+An example is explained in List~\ref{list:copy}.
+The underlying implementation will not be deleted unless
+  it is not referenced anymore.
+
+\lstset{
+  caption={Copy \texttt{DepGraph}},
+  label=list:copy,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+DepGraph g1(ast_root);
+ROSE_ASSERT(g1);    // Assert g1.valid()
+DepGraph g2 = g1;   // Now g1 and g2 shared the same implementation.
+g1.clear();         // g1's pointer to the implementation is reset to 0.
+                    // However, g2 is not influenced.
+DepGraph::vertex_type v1 = g.entry(); // Get the first vertex in the graph.
+DepGraph::vertex_type v2 = v1; // Now, v1 and v2 share the same impl.
+DepGraph::vertex_type v3;
+v3.reset(v1.get()); // Set v3's pointer to v1's. Same as v3 = v1.
+\end{lstlisting}
+
+%%
+%  Section  Vertices and edges
+%  - Properties
+%  - Iteration
+%
+\section{Iterate the dependency graph}
+\label{sec:traverse}
+
+The dependency graph could be iterated using similar way to \emph{Boost Graph Library}.
+An example that traverse and dump the graph to \texttt{std::cout} is illustrated in List~\ref{list:iteration},
+  which is equivalent to invoke \texttt{dump()} function.
+
+\lstset{
+  caption={Iterate \texttt{DepGraph}},
+  label=list:iteration,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+  DepGraph g(ast_root);
+  if (g) {
+    DepGraph::vertex_type v;
+    DepGraph::edge_type e;
+    BOOST_FORALL_VERTICES (v, g, typeof(g)) {
+      cout << "vertex: " << v << endl;
+      BOOST_FORALL_OUTEDGES (v, e, g, typeof(g)) {
+        cout << "edge: " << e << endl;
+      }
+    }
+  }
+\end{lstlisting}
+
+The \texttt{toDOT()} method will generate a DOT file for the graph.
+The \texttt{DepGraphPropertiesWriter} class in the source file
+  is an example to use \texttt{boost::write\_graphviz} to generate customized DOT file.
+
+Additionally, the graph could be converted to \texttt{boost::adjacency\_list}
+  using \texttt{to\_boost\_adjacency\_list()}.
+Such conversion is also illustrated in List~\ref{list:boost}.
+
+\lstset{
+  caption={\texttt{DepGraph} to \texttt{boost::adjacency\_list} conversion},
+  label=list:boost,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+  DepGraph g(ast_root); // Dependency graph to convert
+  ROSE_ASSERT(g);
+
+  typedef DepGraph G;
+  typedef adjacency_list<
+    vecS, vecS, bidirectionalS, G::vertex_type, G::edge_type
+    > BG;
+
+  BG bg(num_vertices(g)); // Target boost graph to build
+  BOOST_AUTO(indices, get(vertex_index_t(), g);
+  BOOST_FOREACH (G::vertex_type v, vertices(g)) {
+    bg[indices[v]].reset(v.get()); // save g's vertex info to bg
+    BOOST_FOREACH (G::edge_type e, out_edges(v, g)) {
+      graph_traits<typeof(bg)>::edge_descriptor ed;
+      bool succ;
+      tie(ed, succ) = add_edge(indices[v], indices[target(e, g)], bg);
+      if (succ)
+        bg[ed].reset(e.get()); // save g's edge info to bg
+    }
+  }
+
+\end{lstlisting}
+
+
+
+%%
+%  Section  Build options
+%  - Side effect interface -- function/statement
+%  - Alias interface
+%  - Array interface
+%
+\section{Build options}
+\label{sec:option}
+The advanced building options
+  such as side effect interface or alias interface
+  could be specified through the \texttt{option\_type}.
+An example enabling function side effect and induction variable substitution
+  is given in List~\ref{list:option}.
+
+\lstset{
+  caption={Options to build \texttt{DepGraph}},
+  label=list:option,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+  DepGraph g;
+  DepGraph::option_type g_option;
+
+  FunctionSideEffect funcInfo;
+  IVSideEffectCollect stmtInfo;
+  g_option.funcInfo = &funcInfo;
+  g_option.stmtInfo = &stmtInfo;
+
+  g.build(ast_root, g_option);
+\end{lstlisting}
+
+\subsection{Function memory side effects}
+\label{sec:option:funcion}
+By default, the statement with function calls will be marked as having IO dependency.
+By specifying the \texttt{stmtInfo} in building option as \texttt{FunctionSideEffect},
+  the dependency graph will be able to look into the function definition
+  to compute memory its side effects
+  (showed in previous example List~\ref{list:option}).
+
+\subsection{Induction variable substitution}
+\label{sec:option:ivs}
+\emph{Induction variable substitution} (\emph{IVS}) is a transformation which can significantly improve
+ the accuracy of dependency graph built for iterations such as loops.
+To enable such substitution,
+  the substitutions are needed to be computed and attached to the corresponding AST node
+  before building dependency graph.
+Then adding \texttt{IVSideEffectCollect} to statement side effect interface in the building option
+  will enable the graph builder to use attached attributes to compute statement side effects
+  and hence get a more accurate dependency graph.
+An example is given in List~\ref{list:ivs} showing how to build a dependency graph
+  with \emph{IVS} support.
+
+\lstset{
+  caption={Enabling IVS},
+  label=list:ivs,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize,
+  captionpos=b}
+\begin{lstlisting}
+  IVAttribute::addToFunction(sage_function);    // Compute attributes.
+  IVAttribute::dump(sage_function); // Output all attributes to cout.
+
+  DepGraph g;
+  DepGraph::option_type g_option;
+
+  IVSideEffectCollect sideEffect;
+  g_option.stmtInfo = &sideEffect;
+
+  g.build(sage_function, g_option);
+
+  IVAttribute::removeAll(sage_function);    // Delete all added attributes.
+\end{lstlisting}
+
+\end{document}
+
+% EOF %
